@@ -326,7 +326,7 @@ def test_preprocessing_with_visualization():
     # Test default pre_process function
     print("   Testing pre_process (default function)...")
     processed = pre_process(simple_rgb)
-    assert processed.shape == (84, 84, 1), f"Expected shape (84, 84, 1), got {processed.shape}"
+    assert processed.shape == (84, 84, 3), f"Expected shape (84, 84, 3), got {processed.shape}"
     assert processed.dtype == np.uint8, f"Expected dtype uint8, got {processed.dtype}"
     print("   ✓ Default pre_process function works correctly")
     
@@ -357,7 +357,7 @@ def test_preprocessing_with_visualization():
     # Test observation space helper
     print("   Testing get_preprocessed_observation_space...")
     obs_shape = get_preprocessed_observation_space(pre_process)
-    assert obs_shape == (84, 84, 1), f"Expected shape (84, 84, 1), got {obs_shape}"
+    assert obs_shape == (84, 84, 3), f"Expected shape (84, 84, 3), got {obs_shape}"
     print("   ✓ Observation space helper works correctly")
     
     print("\n" + "="*60)
@@ -380,8 +380,8 @@ def test_preprocessing_with_visualization():
     
     # SimpleGridEnv - Preprocessed
     simple_processed = pre_process(simple_rgb)
-    axes[0, 1].imshow(simple_processed.squeeze(), cmap="gray")
-    axes[0, 1].set_title(f"SimpleGridEnv - Preprocessed (Grayscale 84x84)\nShape: {simple_processed.shape}", fontsize=12, fontweight='bold')
+    axes[0, 1].imshow(simple_processed)
+    axes[0, 1].set_title(f"SimpleGridEnv - Preprocessed (RGB 84x84)\nShape: {simple_processed.shape}", fontsize=12, fontweight='bold')
     axes[0, 1].axis("off")
     
     # KeyDoorBallEnv - Original
@@ -391,8 +391,8 @@ def test_preprocessing_with_visualization():
     
     # KeyDoorBallEnv - Preprocessed
     keydoor_processed = pre_process(keydoor_rgb)
-    axes[1, 1].imshow(keydoor_processed.squeeze(), cmap="gray")
-    axes[1, 1].set_title(f"KeyDoorBallEnv - Preprocessed (Grayscale 84x84)\nShape: {keydoor_processed.shape}", fontsize=12, fontweight='bold')
+    axes[1, 1].imshow(keydoor_processed)
+    axes[1, 1].set_title(f"KeyDoorBallEnv - Preprocessed (RGB 84x84)\nShape: {keydoor_processed.shape}", fontsize=12, fontweight='bold')
     axes[1, 1].axis("off")
     
     plt.suptitle("Preprocessing: Before and After", fontsize=16, fontweight='bold', y=0.995)

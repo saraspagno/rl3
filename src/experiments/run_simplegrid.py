@@ -43,10 +43,10 @@ SEED = 42
 OUTPUTS_DIR = os.path.join(_PROJECT_ROOT, "outputs")
 
 A2C_CONFIG = {
-    "num_episodes": 15000,
-    "max_steps": 50,          # random agent finds goal ~17 % of the time
+    "num_episodes": 30000,
+    "max_steps": 100,          # random agent finds goal ~17 % of the time
     "lr": 0.0003,              # lower LR for stability (A2C is noisy)
-    "gamma": 0.99,
+    "gamma": 0.95,
     "entropy_coef": 0.02,      # lighter entropy to let policy commit
     "value_coef": 0.5,         # critic loss weight
     "n_steps": 20,             # longer horizon covers more of the episode
