@@ -217,18 +217,22 @@ def print_evaluation_results(results, title="Evaluation Results"):
 # Video recording
 # ---------------------------------------------------------------------------
 
-def record_video(agent, env_class=None, filename="agent.gif", num_episodes=1,
+def record_video(agent, env_class=None, filename="agent.mp4", num_episodes=1,
                   max_steps=200, fps=10, env=None):
     """
-    Record an agent playing and save as GIF.
+    Record an agent playing and save as MP4 or GIF.
+
+    The format is auto-detected from the filename extension:
+        - ``.mp4`` — requires ffmpeg (pre-installed on Colab)
+        - ``.gif`` — works everywhere via imageio
 
     Args:
         agent: trained agent with select_action(obs), or None for random
         env_class: environment class. Ignored if *env* is provided.
-        filename: output GIF path (e.g. "outputs/agent.gif")
+        filename: output path (e.g. "outputs/agent.mp4")
         num_episodes: episodes to record
         max_steps: max steps per episode
-        fps: frames per second for the GIF
+        fps: frames per second
         env: pre-built environment instance (use when you need wrappers).
              Takes precedence over env_class.
 
@@ -276,13 +280,19 @@ def record_video(agent, env_class=None, filename="agent.gif", num_episodes=1,
         print("Warning: no frames captured, skipping video save.")
         return total_reward, total_steps
 
-    # duration in ms per frame (imageio v2.9+ uses duration instead of fps)
-    duration_ms = 1000.0 / fps
-
     out_dir = os.path.dirname(filename)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    imageio.mimsave(filename, frames, duration=duration_ms, loop=0)
+
+    if filename.endswith(".mp4"):
+        writer = imageio.get_writer(filename, fps=fps)
+        for f in frames:
+            writer.append_data(f)
+        writer.close()
+    else:
+        duration_ms = 1000.0 / fps
+        imageio.mimsave(filename, frames, duration=duration_ms, loop=0)
+
     print(f"Video saved: {filename}  ({len(frames)} frames, {fps} fps)")
     print(f"  Episodes: {num_episodes}, Total steps: {total_steps}, Total reward: {total_reward:.2f}")
 

@@ -111,7 +111,7 @@ def main():
 
     # ---- record video ----
     print()
-    video_path = os.path.join(OUTPUTS_DIR, "simplegrid_a2c_trained.gif")
+    video_path = os.path.join(OUTPUTS_DIR, "simplegrid_a2c_trained.mp4")
     record_video(
         agent=agent,
         env_class=SimpleGridEnv,

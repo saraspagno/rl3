@@ -156,7 +156,7 @@ def main():
     video_env = make_keydoor_env_video(
         max_steps=A2C_KEYDOOR_CONFIG["max_steps"],
     )
-    video_path = os.path.join(OUTPUTS_DIR, "keydoorball_a2c_trained.gif")
+    video_path = os.path.join(OUTPUTS_DIR, "keydoorball_a2c_trained.mp4")
     record_video(
         agent=agent,
         env=video_env,
