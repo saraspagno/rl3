@@ -29,7 +29,7 @@ if _PROJECT_ROOT not in sys.path:
 from src.envs import SimpleGridEnv
 from src.actor_critic import train_actor_critic
 from src.utils import (
-    plot_training_history,
+    plot_training,
     evaluate_agent,
     print_evaluation_results,
     record_video,
@@ -97,7 +97,7 @@ def main():
 
     # ---- plot training curves ----
     plot_path = os.path.join(OUTPUTS_DIR, "simplegrid_a2c_training.png")
-    plot_training_history(history, title="A2C on SimpleGridEnv", save_path=plot_path)
+    plot_training(history, title="A2C on SimpleGridEnv", save_path=plot_path)
 
     # ---- evaluate over 100 episodes ----
     print()

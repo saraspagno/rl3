@@ -30,10 +30,17 @@ def obs_to_tensor(obs, device):
     Returns:
         Tensor of shape (1, C, H, W) on the given device, values in [0, 1]
     """
-    # (H, W, C) -> (C, H, W), convert to float32 and normalise to [0, 1]
-    t = torch.from_numpy(obs.transpose(2, 0, 1).astype(np.float32, copy=False))
-    t = t.mul_(1.0 / 255.0)  # in-place: [0,255] -> [0,1]
-    return t.unsqueeze(0).to(device)
+    # Wrap the numpy array (zero-copy), permute to (C, H, W) as a view,
+    # then do a single contiguous copy when converting uint8→float32.
+    # Avoids the intermediate numpy float32 array of the old path.
+    t = (
+        torch.from_numpy(obs)          # (H,W,C) uint8 — zero-copy wrap
+        .permute(2, 0, 1)              # (C,H,W) — view, no copy
+        .unsqueeze(0)                  # (1,C,H,W) — view
+        .to(dtype=torch.float32, device=device)  # single contiguous copy
+    )
+    t.div_(255.0)                      # in-place: [0,255] -> [0,1]
+    return t
 
 
 class CNNFeatureExtractor(nn.Module):

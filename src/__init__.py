@@ -31,7 +31,8 @@ from .reinforce import (
     TrainedAgent,
 )
 from .utils import (
-    plot_training_history,
+    plot_training,
+    plot_training_history,   # alias kept for backwards compat
     evaluate_agent,
     print_evaluation_results,
     record_video,
@@ -59,6 +60,7 @@ __all__ = [
     'compute_returns',
     'TrainedAgent',
     # Utils
+    'plot_training',
     'plot_training_history',
     'evaluate_agent',
     'print_evaluation_results',

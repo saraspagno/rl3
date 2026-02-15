@@ -146,7 +146,8 @@ def pre_process(img):
     cropped = img[margin : h - margin, margin : w - margin]
 
     # 2. Resize to 84×84 (keep RGB)
-    resized = cv2.resize(cropped, (84, 84), interpolation=cv2.INTER_AREA)
+    #    INTER_NEAREST is fastest; fine for a tiny 80→84 upscale on pixel-art
+    resized = cv2.resize(cropped, (84, 84), interpolation=cv2.INTER_NEAREST)
 
     return resized  # (84, 84, 3)
 

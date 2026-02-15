@@ -19,7 +19,7 @@ from ..preprocessing import pre_process
 
 
 def train_actor_critic(
-    env_class,
+    env_class=None,
     num_episodes=10000,
     max_steps=200,
     lr=0.0007,
@@ -31,6 +31,7 @@ def train_actor_critic(
     print_every=100,
     device=None,
     tile_size=10,
+    env=None,
 ):
     """
     Train an Advantage Actor-Critic (A2C) agent.
@@ -39,7 +40,8 @@ def train_actor_critic(
         A_t = (Σ_{k=0}^{n-1} γ^k r_{t+k}) + γ^n V(s_{t+n}) - V(s_t)
 
     Args:
-        env_class: Environment class (SimpleGridEnv or KeyDoorBallEnv)
+        env_class: Environment class (SimpleGridEnv or KeyDoorBallEnv).
+                   Ignored if *env* is provided.
         num_episodes: Total training episodes
         max_steps: Max steps per episode
         lr: Learning rate for Adam
@@ -51,6 +53,8 @@ def train_actor_critic(
         print_every: Logging frequency
         device: torch device
         tile_size: Tile size for env rendering (smaller = faster)
+        env: Pre-built environment instance (use when you need wrappers
+             like SmartRewardWrapper). Takes precedence over env_class.
 
     Returns:
         agent: TrainedActorCriticAgent wrapper
@@ -61,7 +65,10 @@ def train_actor_critic(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # ---- environment & network ----
-    env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=tile_size)
+    if env is None:
+        if env_class is None:
+            raise ValueError("Either env_class or env must be provided.")
+        env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=tile_size)
     num_actions = env.action_space.n
 
     model = ActorCriticNetwork(num_actions).to(device)
@@ -77,7 +84,8 @@ def train_actor_critic(
         "critic_losses": [],
     }
 
-    print(f"Training A2C on {env_class.__name__}")
+    env_name = env_class.__name__ if env_class is not None else type(env).__name__
+    print(f"Training A2C on {env_name}")
     print(f"Episodes: {num_episodes}, Max steps: {max_steps}, n_steps: {n_steps}")
     print(f"LR: {lr}, Gamma: {gamma}, Entropy coef: {entropy_coef}")
     print("=" * 60)
