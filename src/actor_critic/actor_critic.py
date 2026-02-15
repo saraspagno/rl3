@@ -32,6 +32,7 @@ def train_actor_critic(
     device=None,
     tile_size=10,
     env=None,
+    video_at=None,
 ):
     """
     Train an Advantage Actor-Critic (A2C) agent.
@@ -178,6 +179,16 @@ def train_actor_critic(
             history["running_reward"] = (
                 0.95 * history["running_reward"] + 0.05 * episode_reward
             )
+
+        # ---- mid-training video snapshot ----
+        if video_at and (episode + 1) == video_at["episode"]:
+            from ..utils import record_video
+            print(f"\n>>> Recording mid-training video at episode {episode + 1} ...")
+            mid_agent = TrainedActorCriticAgent(model, device)
+            record_video(mid_agent, env_class=env_class,
+                         filename=video_at["filename"],
+                         num_episodes=1, max_steps=max_steps)
+            print()
 
         # ---- logging ----
         if (episode + 1) % print_every == 0:
