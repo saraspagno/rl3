@@ -17,79 +17,85 @@ from .preprocessing import pre_process
 # Plotting
 # ---------------------------------------------------------------------------
 
-def plot_training_history(history, title="Training History", save_path=None):
+def plot_training(history, title="Training", save_path=None):
     """
-    Plot reward and step curves from a training history dict.
+    Unified 2×2 training-curve plot for any algorithm (DQN, A2C, REINFORCE…).
 
-    Expects *history* to contain at least:
-        - episode_rewards : list[float]
-        - episode_steps   : list[int]
+    Top row (always present):
+        - Episode rewards (smoothed)
+        - Episode steps   (smoothed)
 
-    Optionally plots entropy if history contains:
-        - avg_entropy : list[float]
+    Bottom row (algorithm-specific, panels hidden when data is absent):
+        - Left:  loss curve(s)
+              • DQN  → ``losses``
+              • A2C  → ``actor_losses`` + ``critic_losses`` overlaid
+        - Right: exploration / regularisation schedule
+              • DQN  → ``epsilons``
+              • A2C  → ``avg_entropy``
 
     Args:
-        history: dict returned by a training function
-        title: plot super-title
-        save_path: if provided, save the figure to this path instead of plt.show()
+        history: dict returned by a training function.  Must contain at least
+                 ``episode_rewards`` and ``episode_steps``.
+        title:     suptitle for the figure
+        save_path: if given, save PNG and close; otherwise plt.show()
     """
-    has_entropy = "avg_entropy" in history and len(history["avg_entropy"]) > 0
-    ncols = 3 if has_entropy else 2
-    fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 4))
-
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     window = min(100, max(1, len(history["episode_rewards"]) // 10))
+    kernel = np.ones(window) / window if window > 0 else None
 
-    # ---- rewards ----
-    ax = axes[0]
-    ax.plot(history["episode_rewards"], alpha=0.3, label="Per episode")
-    if len(history["episode_rewards"]) >= window:
-        smoothed = np.convolve(
-            history["episode_rewards"],
-            np.ones(window) / window,
-            mode="valid",
-        )
-        ax.plot(
-            range(window - 1, len(history["episode_rewards"])),
-            smoothed,
-            label=f"{window}-ep avg",
-        )
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Reward")
-    ax.set_title(f"{title} — Rewards")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    # -- helper ----------------------------------------------------------
+    def _smooth(ax, data, color, ylabel, subtitle, xlabel="Episode"):
+        ax.plot(data, alpha=0.2, color=color)
+        if kernel is not None and len(data) >= window:
+            sm = np.convolve(data, kernel, mode="valid")
+            ax.plot(range(window - 1, len(data)), sm,
+                    color=color, label=f"{window}-ep avg")
+            ax.legend()
+        ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+        ax.set_title(f"{title} — {subtitle}"); ax.grid(True, alpha=0.3)
 
-    # ---- steps ----
-    ax = axes[1]
-    ax.plot(history["episode_steps"], alpha=0.3, label="Per episode")
-    if len(history["episode_steps"]) >= window:
-        smoothed = np.convolve(
-            history["episode_steps"],
-            np.ones(window) / window,
-            mode="valid",
-        )
-        ax.plot(
-            range(window - 1, len(history["episode_steps"])),
-            smoothed,
-            label=f"{window}-ep avg",
-        )
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Steps")
-    ax.set_title(f"{title} — Steps per Episode")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    # ── top row: rewards + steps (always) ──────────────────────────────
+    _smooth(axes[0, 0], history["episode_rewards"],
+            "tab:blue", "Reward", "Rewards")
+    _smooth(axes[0, 1], history["episode_steps"],
+            "tab:orange", "Steps", "Steps / Episode")
 
-    # ---- entropy (optional) ----
-    if has_entropy:
-        ax = axes[2]
-        ax.plot(history["avg_entropy"])
-        ax.set_xlabel("Update step")
-        ax.set_ylabel("Entropy")
-        ax.set_title(f"{title} — Policy Entropy")
-        ax.grid(True, alpha=0.3)
+    # ── bottom-left: loss ──────────────────────────────────────────────
+    if history.get("losses"):
+        # DQN-style single loss
+        _smooth(axes[1, 0], history["losses"],
+                "tab:red", "Loss", "Huber Loss")
+    elif history.get("actor_losses"):
+        # A2C-style actor + critic losses
+        ax = axes[1, 0]
+        ax.plot(history["actor_losses"], alpha=0.15, color="tab:red")
+        ax.plot(history["critic_losses"], alpha=0.15, color="tab:purple")
+        if kernel is not None and len(history["actor_losses"]) >= window:
+            sm_a = np.convolve(history["actor_losses"], kernel, mode="valid")
+            sm_c = np.convolve(history["critic_losses"], kernel, mode="valid")
+            x = range(window - 1, len(history["actor_losses"]))
+            ax.plot(x, sm_a, color="tab:red",    label=f"Actor  ({window}-avg)")
+            ax.plot(x, sm_c, color="tab:purple",  label=f"Critic ({window}-avg)")
+        ax.set_xlabel("Update step"); ax.set_ylabel("Loss")
+        ax.set_title(f"{title} — Losses"); ax.legend(); ax.grid(True, alpha=0.3)
+    else:
+        axes[1, 0].set_visible(False)
+
+    # ── bottom-right: epsilon or entropy ──────────────────────────────
+    if history.get("epsilons"):
+        ax = axes[1, 1]
+        ax.plot(history["epsilons"], color="tab:green")
+        ax.set_xlabel("Episode"); ax.set_ylabel("Epsilon")
+        ax.set_title(f"{title} — Epsilon Schedule"); ax.grid(True, alpha=0.3)
+    elif history.get("avg_entropy"):
+        ax = axes[1, 1]
+        ax.plot(history["avg_entropy"], color="tab:green")
+        ax.set_xlabel("Update step"); ax.set_ylabel("Entropy")
+        ax.set_title(f"{title} — Policy Entropy"); ax.grid(True, alpha=0.3)
+    else:
+        axes[1, 1].set_visible(False)
 
     plt.tight_layout()
-
     if save_path:
         os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -99,12 +105,16 @@ def plot_training_history(history, title="Training History", save_path=None):
         plt.show()
 
 
+# Keep the old name as an alias so existing imports don't break
+plot_training_history = plot_training
+
+
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
 
-def evaluate_agent(agent, env_class, num_episodes=100, max_steps=200,
-                   tile_size=10):
+def evaluate_agent(agent, env_class=None, num_episodes=100, max_steps=200,
+                   tile_size=10, env=None):
     """
     Evaluate a trained agent over multiple episodes.
 
@@ -112,16 +122,25 @@ def evaluate_agent(agent, env_class, num_episodes=100, max_steps=200,
 
     Args:
         agent: trained agent (or None for random baseline)
-        env_class: environment class (SimpleGridEnv / KeyDoorBallEnv)
+        env_class: environment class (SimpleGridEnv / KeyDoorBallEnv).
+                   Ignored if *env* is provided.
         num_episodes: number of evaluation episodes
         max_steps: max steps per episode
         tile_size: tile size for rendering (smaller = faster)
+        env: pre-built environment instance (use when you need wrappers).
+             Takes precedence over env_class. The env is reset but NOT
+             closed at the end so the caller can reuse it.
 
     Returns:
         dict with keys: num_episodes, avg_reward, std_reward, avg_steps,
         std_steps, success_rate, min_steps, max_steps, all_rewards, all_steps
     """
-    env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=tile_size)
+    close_env = False
+    if env is None:
+        if env_class is None:
+            raise ValueError("Either env_class or env must be provided.")
+        env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=tile_size)
+        close_env = True
 
     episode_rewards = []
     episode_steps = []
@@ -163,7 +182,8 @@ def evaluate_agent(agent, env_class, num_episodes=100, max_steps=200,
         )
 
     print()  # newline after progress bar
-    env.close()
+    if close_env:
+        env.close()
 
     return {
         "num_episodes": num_episodes,
@@ -197,24 +217,35 @@ def print_evaluation_results(results, title="Evaluation Results"):
 # Video recording
 # ---------------------------------------------------------------------------
 
-def record_video(agent, env_class, filename, num_episodes=1, max_steps=200,
-                  fps=10):
+def record_video(agent, env_class=None, filename="agent.mp4", num_episodes=1,
+                  max_steps=200, fps=10, env=None):
     """
-    Record an agent playing and save as GIF.
+    Record an agent playing and save as MP4 or GIF.
+
+    The format is auto-detected from the filename extension:
+        - ``.mp4`` — requires ffmpeg (pre-installed on Colab)
+        - ``.gif`` — works everywhere via imageio
 
     Args:
         agent: trained agent with select_action(obs), or None for random
-        env_class: environment class
-        filename: output GIF path (e.g. "outputs/agent.gif")
+        env_class: environment class. Ignored if *env* is provided.
+        filename: output path (e.g. "outputs/agent.mp4")
         num_episodes: episodes to record
         max_steps: max steps per episode
-        fps: frames per second for the GIF
+        fps: frames per second
+        env: pre-built environment instance (use when you need wrappers).
+             Takes precedence over env_class.
 
     Returns:
         (total_reward, total_steps)
     """
-    # Use full tile_size=32 for crisp video frames
-    env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=32)
+    close_env = False
+    if env is None:
+        if env_class is None:
+            raise ValueError("Either env_class or env must be provided.")
+        # Use full tile_size=32 for crisp video frames
+        env = env_class(preprocess=pre_process, max_steps=max_steps, tile_size=32)
+        close_env = True
 
     frames = []
     total_reward = 0.0
@@ -242,19 +273,26 @@ def record_video(agent, env_class, filename, num_episodes=1, max_steps=200,
             if terminated or truncated:
                 break
 
-    env.close()
+    if close_env:
+        env.close()
 
     if not frames:
         print("Warning: no frames captured, skipping video save.")
         return total_reward, total_steps
 
-    # duration in ms per frame (imageio v2.9+ uses duration instead of fps)
-    duration_ms = 1000.0 / fps
-
     out_dir = os.path.dirname(filename)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    imageio.mimsave(filename, frames, duration=duration_ms, loop=0)
+
+    if filename.endswith(".mp4"):
+        writer = imageio.get_writer(filename, fps=fps)
+        for f in frames:
+            writer.append_data(f)
+        writer.close()
+    else:
+        duration_ms = 1000.0 / fps
+        imageio.mimsave(filename, frames, duration=duration_ms, loop=0)
+
     print(f"Video saved: {filename}  ({len(frames)} frames, {fps} fps)")
     print(f"  Episodes: {num_episodes}, Total steps: {total_steps}, Total reward: {total_reward:.2f}")
 

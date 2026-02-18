@@ -84,6 +84,15 @@ class SimpleGridEnv(BaseMiniGridEnv):
     def _gen_mission():
         return "grand mission"
 
+    def gen_obs(self):
+        """Skip MiniGrid's partial-observation encoding — we use get_frame() instead.
+
+        MiniGrid's default gen_obs() slices a 7×7 sub-grid around the agent,
+        rotates it, and encodes every cell.  We never use that dict (our
+        _get_obs renders the full frame), so skipping it saves ~30 % per step.
+        """
+        return {}
+
     def _get_obs(self, obs=None):
         """Returns the current observation after applying preprocessing."""
         obs = self.get_frame(highlight=False, tile_size=self._obs_tile_size)
@@ -230,6 +239,10 @@ class KeyDoorBallEnv(BaseMiniGridEnv):
     @staticmethod
     def _gen_mission():
         return "Pick up the key to open the door, pick up the ball, then reach the goal"
+
+    def gen_obs(self):
+        """Skip MiniGrid's partial-observation encoding — we use get_frame() instead."""
+        return {}
 
     def _get_obs(self, obs=None):
         """Returns the current observation after applying preprocessing."""
